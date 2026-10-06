@@ -8,7 +8,9 @@ async function request(path, options = {}) {
   } catch (err) {
     if (err.name === 'AbortError') throw err
     console.error('[blooplayground] network error', err)
-    throw new Error("can't reach the playground right now.")
+    const networkError = new Error("can't reach the playground right now.")
+    networkError.code = 'unavailable'
+    throw networkError
   }
 
   const data = await res.json().catch(() => null)
@@ -23,6 +25,7 @@ async function request(path, options = {}) {
     console.error('[blooplayground] api error', res.status, data)
     const err = new Error(data?.error || 'the playground hiccuped. try again?')
     if (res.status === 404) err.code = 'not-found'
+    if ([502, 503, 504].includes(res.status)) err.code = 'unavailable'
     throw err
   }
 

@@ -36,8 +36,7 @@ const LANGUAGES = [
 
 const DURATIONS = [2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]
 
-const BTN =
-  'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100'
+const BTN = 'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100'
 const PRIMARY = `${BTN} bg-ink text-cream hover:bg-ink/90`
 const GHOST = `${BTN} border border-line text-soft hover:border-ink hover:text-ink`
 const INPUT = 'rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm focus:border-ink'
@@ -181,6 +180,7 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [queue, setQueue] = useState(null)
+  const [apiStatus, setApiStatus] = useState('checking')
   const [history, setHistory] = useState([])
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [progress, setProgress] = useState(null)
@@ -223,7 +223,15 @@ export default function App() {
   // queue heartbeat
   useEffect(() => {
     const ctrl = new AbortController()
-    const tick = () => getQueue(ctrl.signal).then(setQueue).catch(() => {})
+    const tick = () =>
+      getQueue(ctrl.signal)
+        .then((data) => {
+          setQueue(data)
+          setApiStatus('online')
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') setApiStatus('offline')
+        })
     tick()
     const t = setInterval(tick, QUEUE_INTERVAL)
     return () => {
@@ -239,7 +247,7 @@ export default function App() {
         setHistory(items.slice().sort((a, b) => (b.finished_at || 0) - (a.finished_at || 0)))
         setHistoryLoaded(true)
       })
-      .catch(() => {})
+      .catch(() => setHistoryLoaded(true))
   }, [])
 
   // history heartbeat
@@ -336,7 +344,12 @@ export default function App() {
       saveJob({ id: job.id, prompt: prompt.trim(), startedAt: startedAt.current })
     } catch (err) {
       clearSavedJob()
-      setError(err.message)
+      setError(
+        err.code === 'unavailable'
+          ? 'the playground is closed right now. start the backend and try again.'
+          : err.message,
+      )
+      if (err.code === 'unavailable') setApiStatus('offline')
       setPhase('error')
     }
   }
@@ -397,7 +410,7 @@ export default function App() {
     <main className="flex min-h-dvh flex-col items-center px-5 py-12 sm:py-20">
       <div className="w-full max-w-xl">
         <header className="mb-9">
-          <QueueChip queue={queue} />
+          <QueueChip queue={queue} apiStatus={apiStatus} />
           <h1 className="text-3xl font-bold tracking-tight lowercase sm:text-4xl">
             blooplayground
             <span
@@ -538,6 +551,20 @@ export default function App() {
         </form>
 
         <div aria-live="polite">
+          {apiStatus === 'offline' && phase !== 'error' && (
+            <section className="fade-up mt-7 rounded-2xl border border-bloop/40 bg-paper px-4 py-3">
+              <div className="flex items-start gap-3">
+                <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-bloop" />
+                <div>
+                  <p className="font-medium">the playground is closed right now.</p>
+                  <p className="mt-0.5 text-sm text-soft">
+                    the sound kitchen is taking a break. please come back later.
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+
           {busy && (
             <section className="fade-up mt-7">
               {percent !== null && (
@@ -611,7 +638,25 @@ export default function App() {
   )
 }
 
-function QueueChip({ queue }) {
+function QueueChip({ queue, apiStatus }) {
+  if (apiStatus === 'checking') {
+    return (
+      <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 text-xs text-soft">
+        <span aria-hidden="true" className="size-1.5 shrink-0 animate-pulse rounded-full bg-soft/50" />
+        checking the playground
+      </p>
+    )
+  }
+
+  if (apiStatus === 'offline') {
+    return (
+      <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-bloop/40 px-3 py-1 text-xs text-ink">
+        <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-bloop" />
+        the playground is closed right now
+      </p>
+    )
+  }
+
   if (!queue) return null
 
   const total = queue.total ?? 0
