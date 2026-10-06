@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #fbf6ec;
+  --color-paper: #fffdf8;
+  --color-ink: #17140f;
+  --color-soft: #6e655a;
+  --color-line: #e6dccb;
+  --color-bloop: #ff5a1f;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-bloop);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-bloop);
+  outline-offset: 2px;
+}
+
+summary {
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 0.2s ease;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.fade-up {
+  animation: fade-up 0.32s ease-out both;
+}
+
+.eq-bar {
+  animation: eq 0.9s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up,
+  .eq-bar {
+    animation: none;
+  }
+}
